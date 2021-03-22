@@ -11,6 +11,7 @@ import metrics.writer as metrics_writer
 
 from baseline_constants import MAIN_PARAMS, MODEL_PARAMS
 from client import Client
+# from client_comm import ClientComm
 from server import Server
 from model import ServerModel
 
@@ -109,6 +110,12 @@ def create_clients(users, groups, train_data, test_data, model):
     if len(groups) == 0:
         groups = [[] for _ in users]
     clients = [Client(u, g, train_data[u], test_data[u], model) for u, g in zip(users, groups)]
+    # port_assign = 10000
+    # clients = []
+    # for u, g in zip(users, groups):
+    #     c = ClientComm(u, g, train_data[u], test_data[u], model, "127.0.0.1", port_assign)
+    #     clients.append(c)
+    #     port_assign += 1
     return clients
 
 
@@ -125,7 +132,7 @@ def setup_clients(dataset, model=None, use_val_set=False):
     users, groups, train_data, test_data = read_data(train_data_dir, test_data_dir)
 
     clients = create_clients(users, groups, train_data, test_data, model)
-
+    # TO DO: assign IP/port to each client and spawn separate process for each of these clients
     return clients
 
 

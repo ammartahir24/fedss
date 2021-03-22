@@ -1,0 +1,206 @@
+python3 main.py -dataset femnist -model cnn --num-rounds 100 --clients-per-round 20 --seed 0
+############################## femnist.cnn ##############################
+WARNING:tensorflow:From /home/ammar/py36/leaf/models/femnist/cnn.py:26: conv2d (from tensorflow.python.layers.convolutional) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use keras.layers.conv2d instead.
+WARNING:tensorflow:From /home/ammar/.pyenv/versions/3.6.0/lib/python3.6/site-packages/tensorflow/python/framework/op_def_library.py:263: colocate_with (from tensorflow.python.framework.ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Colocations handled automatically by placer.
+WARNING:tensorflow:From /home/ammar/py36/leaf/models/femnist/cnn.py:27: max_pooling2d (from tensorflow.python.layers.pooling) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use keras.layers.max_pooling2d instead.
+WARNING:tensorflow:From /home/ammar/py36/leaf/models/femnist/cnn.py:36: dense (from tensorflow.python.layers.core) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use keras.layers.dense instead.
+WARNING:tensorflow:From /home/ammar/.pyenv/versions/3.6.0/lib/python3.6/site-packages/tensorflow/python/ops/losses/losses_impl.py:209: to_float (from tensorflow.python.ops.math_ops) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use tf.cast instead.
+2021-03-21 22:31:54.964384: I tensorflow/core/platform/cpu_feature_guard.cc:141] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2021-03-21 22:31:55.150260: I tensorflow/core/platform/profile_utils/cpu_utils.cc:94] CPU Frequency: 2899885000 Hz
+2021-03-21 22:31:55.178888: I tensorflow/compiler/xla/service/service.cc:150] XLA service 0x5618603f58f0 executing computations on platform Host. Devices:
+2021-03-21 22:31:55.178929: I tensorflow/compiler/xla/service/service.cc:158]   StreamExecutor device (0): <undefined>, <undefined>
+WARNING:tensorflow:From /home/ammar/.pyenv/versions/3.6.0/lib/python3.6/site-packages/tensorflow/python/profiler/internal/flops_registry.py:142: tensor_shape_from_node_def_name (from tensorflow.python.framework.graph_util_impl) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use tf.compat.v1.graph_util.remove_training_nodes
+Parsing Inputs...
+Incomplete shape.
+Incomplete shape.
+
+=========================Options=============================
+-max_depth                  10000
+-min_bytes                  0
+-min_peak_bytes             0
+-min_residual_bytes         0
+-min_output_bytes           0
+-min_micros                 0
+-min_accelerator_micros     0
+-min_cpu_micros             0
+-min_params                 0
+-min_float_ops              1
+-min_occurrence             0
+-step                       -1
+-order_by                   float_ops
+-account_type_regexes       .*
+-start_name_regexes         .*
+-trim_name_regexes          
+-show_name_regexes          .*
+-hide_name_regexes          
+-account_displayed_op_only  true
+-select                     float_ops
+-output                     stdout:
+
+==================Model Analysis Report======================
+Incomplete shape.
+Incomplete shape.
+
+Doc:
+scope: The nodes in the model graph are organized by their names, which is hierarchical like filesystem.
+flops: Number of float operations. Note: Please read the implementation for the math behind it.
+
+Profile:
+node name | # float_ops
+_TFProfRoot (--/13.20m flops)
+  dense/kernel/Initializer/random_uniform (6.42m/12.85m flops)
+    dense/kernel/Initializer/random_uniform/mul (6.42m/6.42m flops)
+    dense/kernel/Initializer/random_uniform/sub (1/1 flops)
+  dense_1/kernel/Initializer/random_uniform (126.98k/253.95k flops)
+    dense_1/kernel/Initializer/random_uniform/mul (126.98k/126.98k flops)
+    dense_1/kernel/Initializer/random_uniform/sub (1/1 flops)
+  conv2d_1/kernel/Initializer/random_uniform (51.20k/102.40k flops)
+    conv2d_1/kernel/Initializer/random_uniform/mul (51.20k/51.20k flops)
+    conv2d_1/kernel/Initializer/random_uniform/sub (1/1 flops)
+  conv2d/kernel/Initializer/random_uniform (800/1.60k flops)
+    conv2d/kernel/Initializer/random_uniform/mul (800/800 flops)
+    conv2d/kernel/Initializer/random_uniform/sub (1/1 flops)
+  gradients/sparse_softmax_cross_entropy_loss/value_grad/Neg (1/1 flops)
+  gradients/sparse_softmax_cross_entropy_loss/value_grad/mul (1/1 flops)
+  sparse_softmax_cross_entropy_loss/num_present/Equal (1/1 flops)
+
+======================End of Report==========================
+Clients in Total: 377
+--- Random Initialization ---
+train_accuracy: 0.0122801, 10th percentile: 0, 50th percentile: 0.00653595, 90th percentile 0.0300947
+train_loss: 4.12584, 10th percentile: 4.11565, 50th percentile: 4.12685, 90th percentile 4.13363
+test_accuracy: 0.0124067, 10th percentile: 0, 50th percentile: 0, 90th percentile 0.0472727
+test_loss: 4.12616, 10th percentile: 4.09708, 50th percentile: 4.12527, 90th percentile 4.15085
+--- Round 1 of 100: Training 20 Clients ---
+--- Round 2 of 100: Training 20 Clients ---
+--- Round 3 of 100: Training 20 Clients ---
+--- Round 4 of 100: Training 20 Clients ---
+--- Round 5 of 100: Training 20 Clients ---
+--- Round 6 of 100: Training 20 Clients ---
+--- Round 7 of 100: Training 20 Clients ---
+--- Round 8 of 100: Training 20 Clients ---
+--- Round 9 of 100: Training 20 Clients ---
+--- Round 10 of 100: Training 20 Clients ---
+--- Round 11 of 100: Training 20 Clients ---
+--- Round 12 of 100: Training 20 Clients ---
+--- Round 13 of 100: Training 20 Clients ---
+--- Round 14 of 100: Training 20 Clients ---
+--- Round 15 of 100: Training 20 Clients ---
+--- Round 16 of 100: Training 20 Clients ---
+--- Round 17 of 100: Training 20 Clients ---
+--- Round 18 of 100: Training 20 Clients ---
+--- Round 19 of 100: Training 20 Clients ---
+--- Round 20 of 100: Training 20 Clients ---
+train_accuracy: 0.0384251, 10th percentile: 0, 50th percentile: 0.0108696, 90th percentile 0.0687416
+train_loss: 3.94006, 10th percentile: 3.87476, 50th percentile: 3.9062, 90th percentile 3.99203
+test_accuracy: 0.0361508, 10th percentile: 0, 50th percentile: 0, 90th percentile 0.0909091
+test_loss: 3.94091, 10th percentile: 3.81691, 50th percentile: 3.92455, 90th percentile 4.02784
+--- Round 21 of 100: Training 20 Clients ---
+--- Round 22 of 100: Training 20 Clients ---
+--- Round 23 of 100: Training 20 Clients ---
+--- Round 24 of 100: Training 20 Clients ---
+--- Round 25 of 100: Training 20 Clients ---
+--- Round 26 of 100: Training 20 Clients ---
+--- Round 27 of 100: Training 20 Clients ---
+--- Round 28 of 100: Training 20 Clients ---
+--- Round 29 of 100: Training 20 Clients ---
+--- Round 30 of 100: Training 20 Clients ---
+--- Round 31 of 100: Training 20 Clients ---
+--- Round 32 of 100: Training 20 Clients ---
+--- Round 33 of 100: Training 20 Clients ---
+--- Round 34 of 100: Training 20 Clients ---
+--- Round 35 of 100: Training 20 Clients ---
+--- Round 36 of 100: Training 20 Clients ---
+--- Round 37 of 100: Training 20 Clients ---
+--- Round 38 of 100: Training 20 Clients ---
+--- Round 39 of 100: Training 20 Clients ---
+--- Round 40 of 100: Training 20 Clients ---
+train_accuracy: 0.0545357, 10th percentile: 0.0297422, 50th percentile: 0.0662252, 90th percentile 0.094399
+train_loss: 3.73726, 10th percentile: 3.57143, 50th percentile: 3.65894, 90th percentile 3.85918
+test_accuracy: 0.0597094, 10th percentile: 0, 50th percentile: 0.0555556, 90th percentile 0.166667
+test_loss: 3.73851, 10th percentile: 3.44435, 50th percentile: 3.70277, 90th percentile 3.93962
+--- Round 41 of 100: Training 20 Clients ---
+--- Round 42 of 100: Training 20 Clients ---
+--- Round 43 of 100: Training 20 Clients ---
+--- Round 44 of 100: Training 20 Clients ---
+--- Round 45 of 100: Training 20 Clients ---
+--- Round 46 of 100: Training 20 Clients ---
+--- Round 47 of 100: Training 20 Clients ---
+--- Round 48 of 100: Training 20 Clients ---
+--- Round 49 of 100: Training 20 Clients ---
+--- Round 50 of 100: Training 20 Clients ---
+--- Round 51 of 100: Training 20 Clients ---
+--- Round 52 of 100: Training 20 Clients ---
+--- Round 53 of 100: Training 20 Clients ---
+--- Round 54 of 100: Training 20 Clients ---
+--- Round 55 of 100: Training 20 Clients ---
+--- Round 56 of 100: Training 20 Clients ---
+--- Round 57 of 100: Training 20 Clients ---
+--- Round 58 of 100: Training 20 Clients ---
+--- Round 59 of 100: Training 20 Clients ---
+--- Round 60 of 100: Training 20 Clients ---
+train_accuracy: 0.0546448, 10th percentile: 0.0297422, 50th percentile: 0.0662252, 90th percentile 0.0946239
+train_loss: 3.69431, 10th percentile: 3.53359, 50th percentile: 3.64488, 90th percentile 3.81922
+test_accuracy: 0.0597094, 10th percentile: 0, 50th percentile: 0.0555556, 90th percentile 0.166667
+test_loss: 3.6951, 10th percentile: 3.38957, 50th percentile: 3.65423, 90th percentile 3.93495
+--- Round 61 of 100: Training 20 Clients ---
+--- Round 62 of 100: Training 20 Clients ---
+--- Round 63 of 100: Training 20 Clients ---
+--- Round 64 of 100: Training 20 Clients ---
+--- Round 65 of 100: Training 20 Clients ---
+--- Round 66 of 100: Training 20 Clients ---
+--- Round 67 of 100: Training 20 Clients ---
+--- Round 68 of 100: Training 20 Clients ---
+--- Round 69 of 100: Training 20 Clients ---
+--- Round 70 of 100: Training 20 Clients ---
+--- Round 71 of 100: Training 20 Clients ---
+--- Round 72 of 100: Training 20 Clients ---
+--- Round 73 of 100: Training 20 Clients ---
+--- Round 74 of 100: Training 20 Clients ---
+--- Round 75 of 100: Training 20 Clients ---
+--- Round 76 of 100: Training 20 Clients ---
+--- Round 77 of 100: Training 20 Clients ---
+--- Round 78 of 100: Training 20 Clients ---
+--- Round 79 of 100: Training 20 Clients ---
+--- Round 80 of 100: Training 20 Clients ---
+train_accuracy: 0.0582833, 10th percentile: 0.0302697, 50th percentile: 0.0705128, 90th percentile 0.10274
+train_loss: 3.68547, 10th percentile: 3.5313, 50th percentile: 3.64792, 90th percentile 3.80444
+test_accuracy: 0.0634244, 10th percentile: 0, 50th percentile: 0.0588235, 90th percentile 0.169565
+test_loss: 3.68607, 10th percentile: 3.38103, 50th percentile: 3.65416, 90th percentile 3.92846
+--- Round 81 of 100: Training 20 Clients ---
+--- Round 82 of 100: Training 20 Clients ---
+--- Round 83 of 100: Training 20 Clients ---
+--- Round 84 of 100: Training 20 Clients ---
+--- Round 85 of 100: Training 20 Clients ---
+--- Round 86 of 100: Training 20 Clients ---
+--- Round 87 of 100: Training 20 Clients ---
+--- Round 88 of 100: Training 20 Clients ---
+--- Round 89 of 100: Training 20 Clients ---
+--- Round 90 of 100: Training 20 Clients ---
+--- Round 91 of 100: Training 20 Clients ---
+--- Round 92 of 100: Training 20 Clients ---
+--- Round 93 of 100: Training 20 Clients ---
+--- Round 94 of 100: Training 20 Clients ---
+--- Round 95 of 100: Training 20 Clients ---
+--- Round 96 of 100: Training 20 Clients ---
+--- Round 97 of 100: Training 20 Clients ---
+--- Round 98 of 100: Training 20 Clients ---
+--- Round 99 of 100: Training 20 Clients ---
+--- Round 100 of 100: Training 20 Clients ---
+train_accuracy: 0.0582288, 10th percentile: 0.0302165, 50th percentile: 0.0699588, 90th percentile 0.10241
+train_loss: 3.68132, 10th percentile: 3.52573, 50th percentile: 3.64364, 90th percentile 3.80369
+test_accuracy: 0.0630629, 10th percentile: 0, 50th percentile: 0.0571429, 90th percentile 0.169565
+test_loss: 3.68122, 10th percentile: 3.36971, 50th percentile: 3.65476, 90th percentile 3.9298
+Model saved in path: checkpoints/femnist/cnn.ckpt

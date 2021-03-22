@@ -55,6 +55,9 @@ class Server:
             c.id: {BYTES_WRITTEN_KEY: 0,
                    BYTES_READ_KEY: 0,
                    LOCAL_COMPUTATIONS_KEY: 0} for c in clients}
+        
+        # TO DO: Add two loops: first distribute model to selected_clients, second waits for k responses
+        # TO DO: Transfer client train code to client.py
         for c in clients:
             c.model.set_params(self.model)
             comp, num_samples, update = c.train(num_epochs, batch_size, minibatch)
