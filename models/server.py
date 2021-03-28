@@ -1,6 +1,9 @@
 import numpy as np
-
+import socket
+import threading
+import queue
 from baseline_constants import BYTES_WRITTEN_KEY, BYTES_READ_KEY, LOCAL_COMPUTATIONS_KEY
+import jsonpickle
 
 class Server:
     
@@ -9,6 +12,29 @@ class Server:
         self.model = client_model.get_params()
         self.selected_clients = []
         self.updates = []
+        self.ip = "127.0.0.1"
+        self.port = 9999
+        self.k = 2
+        threading.Thread(target = self.listener).start()
+        self.message_queue = queue.Queue()
+
+    def listener(self):
+        soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        soc.bind((self.ip, self.port))
+        soc.listen(20)
+        while True:
+            conn, addr = soc.accept()
+            threading.Thread(target = self.handleConn, args=(conn,addr)).start()
+    
+    def handleConn(self, conn):
+        data = b''
+        while True:
+            d = conn.recv(1024)
+            if not d:
+                break
+            data += d
+        data = jsonpickle.decode(json.loads(data.decode('utf-8')))
+        self.message_queue.put(data)
 
     def select_clients(self, my_round, possible_clients, num_clients=20):
         """Selects num_clients clients randomly from possible_clients.
@@ -28,7 +54,7 @@ class Server:
 
         return [(c.num_train_samples, c.num_test_samples) for c in self.selected_clients]
 
-    def train_model(self, num_epochs=1, batch_size=10, minibatch=None, clients=None):
+    def train_model(self, num_epochs=1, batch_size=10, minibatch=None, clients=None, round_num=0):
         """Trains self.model on given clients.
         
         Trains model on self.selected_clients if clients=None;
@@ -57,17 +83,42 @@ class Server:
                    LOCAL_COMPUTATIONS_KEY: 0} for c in clients}
         
         # TO DO: Add two loops: first distribute model to selected_clients, second waits for k responses
-        # TO DO: Transfer client train code to client.py
+        server_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_soc.bind((self.ip, self.port))
         for c in clients:
             c.model.set_params(self.model)
-            comp, num_samples, update = c.train(num_epochs, batch_size, minibatch)
+            c.train(num_epochs, batch_size, minibatch, round_num)
+            # comp, num_samples, update = c.train(num_epochs, batch_size, minibatch, round_num)
 
-            sys_metrics[c.id][BYTES_READ_KEY] += c.model.size
-            sys_metrics[c.id][BYTES_WRITTEN_KEY] += c.model.size
-            sys_metrics[c.id][LOCAL_COMPUTATIONS_KEY] = comp
+            # sys_metrics[c.id][BYTES_READ_KEY] += c.model.size
+            # sys_metrics[c.id][BYTES_WRITTEN_KEY] += c.model.size
+            # sys_metrics[c.id][LOCAL_COMPUTATIONS_KEY] = comp
 
-            self.updates.append((num_samples, update))
+            # self.updates.append((num_samples, update))
+        sys_metrics = self.collect_updates(round_num, "train", sys_metrics=sys_metrics)
 
+        return sys_metrics
+
+    def collect_updates(self, round_num, type_, sys_metrics={}):
+        num_k = 0
+        while num_k < self.k:
+            data = self.message_queue.get()
+            if data['round_num'] < round_num:
+                continue
+            elif data['type'] == type_ and type_ == "test" and data['round_num'] == round_num:
+                c_metrics, c_id = data['c_metrics'], data['id']
+                sys_metrics[c_id] = c_metrics
+                num_k += 1
+            elif data['type'] == type_ and type_ == "train" and data['round_num'] == round_num:
+                comp, num_samples, update, c_id, c_model_size = data['comp'], data['num_samples'], data['update'], data['id'], data['model_size']
+                sys_metrics[c_id][BYTES_READ_KEY] += c_model_size
+                sys_metrics[c_id][BYTES_WRITTEN_KEY] += c_model_size
+                sys_metrics[c_id][LOCAL_COMPUTATIONS_KEY] = comp
+
+                self.updates.append((num_samples, update))
+                num_k += 1
+            else:
+                self.message_queue.put(data)
         return sys_metrics
 
     def update_model(self):
@@ -82,7 +133,7 @@ class Server:
         self.model = averaged_soln
         self.updates = []
 
-    def test_model(self, clients_to_test, set_to_use='test'):
+    def test_model(self, clients_to_test, num_round, set_to_use='test'):
         """Tests self.model on given clients.
 
         Tests model on self.selected_clients if clients_to_test=None.
@@ -98,9 +149,11 @@ class Server:
 
         for client in clients_to_test:
             client.model.set_params(self.model)
-            c_metrics = client.test(set_to_use)
-            metrics[client.id] = c_metrics
+            client.test(set_to_use, num_round)
+            # c_metrics = client.test(set_to_use)
+            # metrics[client.id] = c_metrics
         
+        metrics = self.collect_updates(num_round, "test", sys_metrics=metrics)
         return metrics
 
     def get_clients_info(self, clients):

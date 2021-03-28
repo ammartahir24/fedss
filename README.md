@@ -44,7 +44,7 @@
   * **Task:** Next-word Prediction.
 
 ## Notes
-
+- You'll need python3.6 to run this code, install pyenv. I followed [these installation steps](https://www.liquidweb.com/kb/how-to-install-pyenv-on-ubuntu-18-04/) for Ubuntu20.04. Install 3.6.0 with pyenv, and set the environment to python3.6.0 in the main directory. Install pip3 while in the main directory.
 - Install the libraries listed in ```requirements.txt```
     - I.e. with pip: run ```pip3 install -r requirements.txt```
 - Go to directory of respective dataset for instructions on generating data

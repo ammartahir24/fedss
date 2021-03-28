@@ -11,7 +11,7 @@ import metrics.writer as metrics_writer
 
 from baseline_constants import MAIN_PARAMS, MODEL_PARAMS
 from client import Client
-# from client_comm import ClientComm
+from client_comm import ClientComm
 from server import Server
 from model import ServerModel
 
@@ -62,7 +62,7 @@ def main():
     server = Server(client_model)
 
     # Create clients
-    clients = setup_clients(args.dataset, client_model, args.use_val_set)
+    clients = setup_clients(args.dataset, args.model, client_model, args.use_val_set, args.seed, args.lr)
     client_ids, client_groups, client_num_samples = server.get_clients_info(clients)
     print('Clients in Total: %d' % len(clients))
 
@@ -81,7 +81,7 @@ def main():
         c_ids, c_groups, c_num_samples = server.get_clients_info(server.selected_clients)
 
         # Simulate server model training on selected clients' data
-        sys_metrics = server.train_model(num_epochs=args.num_epochs, batch_size=args.batch_size, minibatch=args.minibatch)
+        sys_metrics = server.train_model(num_epochs=args.num_epochs, batch_size=args.batch_size, minibatch=args.minibatch, round_num=i+1)
         sys_writer_fn(i + 1, c_ids, sys_metrics, c_groups, c_num_samples)
         
         # Update server model
@@ -106,20 +106,20 @@ def online(clients):
     return clients
 
 
-def create_clients(users, groups, train_data, test_data, model):
+def create_clients(users, groups, train_data, test_data, model, seed, lr, dataset, model_):
     if len(groups) == 0:
         groups = [[] for _ in users]
-    clients = [Client(u, g, train_data[u], test_data[u], model) for u, g in zip(users, groups)]
-    # port_assign = 10000
-    # clients = []
-    # for u, g in zip(users, groups):
-    #     c = ClientComm(u, g, train_data[u], test_data[u], model, "127.0.0.1", port_assign)
-    #     clients.append(c)
-    #     port_assign += 1
+    # clients = [Client(u, g, train_data[u], test_data[u], model) for u, g in zip(users, groups)]
+    port_assign = 10000
+    clients = []
+    for u, g in zip(users, groups):
+        c = ClientComm(u, g, train_data[u], test_data[u], model_, "127.0.0.1", port_assign, seed, lr, dataset)
+        clients.append(c)
+        port_assign += 1
     return clients
 
 
-def setup_clients(dataset, model=None, use_val_set=False):
+def setup_clients(dataset, model_, model=None, use_val_set=False, seed=0, lr=-1):
     """Instantiates clients based on given train and test data directories.
 
     Return:
@@ -131,7 +131,7 @@ def setup_clients(dataset, model=None, use_val_set=False):
 
     users, groups, train_data, test_data = read_data(train_data_dir, test_data_dir)
 
-    clients = create_clients(users, groups, train_data, test_data, model)
+    clients = create_clients(users, groups, train_data, test_data, model, seed, lr, dataset, model_)
     # TO DO: assign IP/port to each client and spawn separate process for each of these clients
     return clients
 
@@ -157,12 +157,12 @@ def get_sys_writer_function(args):
 def print_stats(
     num_round, server, clients, num_samples, args, writer, use_val_set):
     
-    train_stat_metrics = server.test_model(clients, set_to_use='train')
+    train_stat_metrics = server.test_model(clients, num_round, set_to_use='train')
     print_metrics(train_stat_metrics, num_samples, prefix='train_')
     writer(num_round, train_stat_metrics, 'train')
 
     eval_set = 'test' if not use_val_set else 'val'
-    test_stat_metrics = server.test_model(clients, set_to_use=eval_set)
+    test_stat_metrics = server.test_model(clients, num_round, set_to_use=eval_set)
     print_metrics(test_stat_metrics, num_samples, prefix='{}_'.format(eval_set))
     writer(num_round, test_stat_metrics, eval_set)
 
