@@ -30,11 +30,13 @@ class ClientComm:
         data["dataset"] = dataset
         # data["model"] = model
         # self.model.save("temp/"+ip+str(port)+"model")
-        with open("temp/"+ip+str(port)+".json", 'w') as outfile:
+        fname_data = "temp/" + ip + str(port) + ".json"
+        fname_log = "temp/" + ip + str(port) + ".log"
+        cmd_client = "python3 run_client.py " + ip + " " + str(port) + " > " + fname_log
+        with open(fname_data, 'w') as outfile:
             json.dump(data, outfile)
-        #spawn client process
         # To Do: spawn process in mahimahi shell
-        client_process = Popen("python3 run_client.py "+ip+" "+str(port), shell=True)
+        client_process = Popen(cmd_client, shell=True)
         
     def train(self, num_epochs, batch_size, minibatch, round_num):
         # send self.model and params to client
