@@ -14,7 +14,7 @@ class Server:
         self.updates = []
         self.ip = "127.0.0.1"
         self.port = 9999
-        self.k = 2
+        self.k = 5
         threading.Thread(target = self.listener).start()
         self.message_queue = queue.Queue()
 
@@ -26,14 +26,20 @@ class Server:
             conn, addr = soc.accept()
             threading.Thread(target = self.handleConn, args=(conn,addr)).start()
     
-    def handleConn(self, conn):
+    def msg_recv(self, conn, msg_len):
+        recv_len = 0
         data = b''
-        while True:
-            d = conn.recv()
-            if not d:
-                break
+        while recv_len < msg_len:
+            d = conn.recv(msg_len)
             data += d
-        data = jsonpickle.decode(json.loads(data.decode('utf-8')))
+            recv_len += len(d)
+        return data
+
+    def handleConn(self, conn, addr):
+        msg_len = int(conn.recv(1024).decode('utf-8'))
+        conn.send("ok".encode('utf-8'))
+        data = self.msg_recv(conn, msg_len)
+        data = jsonpickle.decode(data.decode('utf-8'))
         self.message_queue.put(data)
 
     def select_clients(self, my_round, possible_clients, num_clients=20):
@@ -83,8 +89,6 @@ class Server:
                    LOCAL_COMPUTATIONS_KEY: 0} for c in clients}
         
         # TO DO: Add two loops: first distribute model to selected_clients, second waits for k responses
-        server_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        server_soc.bind((self.ip, self.port))
         for c in clients:
             c.model_set_params(self.model)
             c.train(num_epochs, batch_size, minibatch, round_num)

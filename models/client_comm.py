@@ -59,7 +59,10 @@ class ClientComm:
         data["batch_size"] = batch_size
         data["minibatch"] = minibatch
         data["round_num"] = round_num
-        soc.send(json.dumps(jsonpickle.encode(data)).encode('utf-8'))
+        data_to_send = json.dumps(jsonpickle.encode(data)).encode('utf-8')
+        soc.send(str(len(data_to_send)).encode('utf-8'))
+        soc.recv(2)
+        soc.send(data_to_send)
     
     def test(self, set_to_use, round_num):
         # send self.model and set_to_use to client
@@ -70,7 +73,10 @@ class ClientComm:
         data["model"] = self.model_params
         data["set_to_use"] = set_to_use
         data["round_num"] = round_num
-        soc.send(json.dumps(jsonpickle.encode(data)).encode('utf-8'))
+        data_to_send = jsonpickle.encode(data).encode('utf-8')
+        soc.send(str(len(data_to_send)).encode('utf-8'))
+        soc.recv(2)
+        soc.send(data_to_send)
 
     def stop(self):
         soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -80,6 +86,7 @@ class ClientComm:
     def model_set_params(self, model_params):
         # print(model_params)
         self.model_params = model_params
+    
     @property
     def num_samples(self):
         # get num_samples from client and return
@@ -87,4 +94,22 @@ class ClientComm:
         soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         soc.connect((self.ip, self.port))
         soc.send("spl".encode("utf-8"))
+        return int(soc.recv(1024).decode('utf-8'))
+
+    @property
+    def num_test_samples(self):
+        # get num_samples from client and return
+        print("num_test_samples requested on %d" %(self.port))
+        soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        soc.connect((self.ip, self.port))
+        soc.send("ntt".encode("utf-8"))
+        return int(soc.recv(1024).decode('utf-8'))
+
+    @property
+    def num_train_samples(self):
+        # get num_samples from client and return
+        print("num_train_samples requested on %d" %(self.port))
+        soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        soc.connect((self.ip, self.port))
+        soc.send("ntr".encode("utf-8"))
         return int(soc.recv(1024).decode('utf-8'))

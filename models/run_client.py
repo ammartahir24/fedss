@@ -57,6 +57,16 @@ client_model = ClientModel(seed, *model_params)
 
 client = Client(user, group, train_data, test_data, client_model)
 
+
+def msg_recv(conn, msg_len):
+    recv_len = 0
+    data = b''
+    while recv_len < msg_len:
+        d = conn.recv(msg_len)
+        data += d
+        recv_len += len(d)
+    return data
+
 soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 soc.bind((ip, port))
 soc.listen()
@@ -68,21 +78,20 @@ while True:
     print("%s message received from %d" %(action, addr[1]))
     if action == "trn":
         # receive model, and params
-        data = b''
-        while True:
-            d = conn.recv()
-            if not d:
-                break
-            data += d
+        msg_len = int(conn.recv(1024).decode('utf-8'))
+        conn.send("ok".encode('utf-8'))
+        data = msg_recv(conn, msg_len)
         data = jsonpickle.decode(json.loads(data.decode('utf-8')))
         model = data['model']
         num_epochs = data['num_epochs']
         batch_size = data['batch_size']
         minibatch = data['minibatch']
         round_num = data['round_num']
+        print("%d: model received, starting training" %(port))
         client.model.set_params(model)
         comp, num_samples, update = client.train(num_epochs, batch_size, minibatch)
         # send updates to server
+        print("%d: training complete, sending weights to server" %(port))
         svr_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         svr_soc.connect((server_ip, server_port))
         data = {}
@@ -93,21 +102,25 @@ while True:
         data['type'] = 'train'
         data['id'] = client.id
         data['model_size'] = client.model.size
-        svr_soc.send(json.dumps(jsonpickle.encode(data)).encode('utf-8'))
+        data_to_send = jsonpickle.encode(data).encode('utf-8')
+        svr_soc.send(str(len(data_to_send)).encode('utf-8'))
+        svr_soc.recv(2)
+        svr_soc.send(data_to_send)
     elif action == "tst":
         # receive model and param
-        data = b''
-        while True:
-            d = conn.recv()
-            if not d:
-                break
-            data += d
-        data = jsonpickle.decode(json.load(data.decode('utf-8')))
+        msg_len = int(conn.recv(1024).decode('utf-8'))
+        conn.send("ok".encode('utf-8'))
+        print("%d: receiving %d bytes" %(port, msg_len))
+        data = msg_recv(conn, msg_len)
+        assert(len(data) == msg_len)
+        data = jsonpickle.decode(data.decode('utf-8'))
         model = data['model']
         set_to_use = data['set_to_use']
         round_num = data['round_num']
+        print("%d: model received, starting testing" %(port))
         client.model.set_params(model)
         c_metrics = client.test(set_to_use)
+        print("%d: testing complete, sending metrics to server" %(port))
         # send c_metrics to server
         svr_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         svr_soc.connect((server_ip, server_port))
@@ -116,9 +129,17 @@ while True:
         data['round_num'] = round_num
         data['id'] = client.id
         data['type'] = 'test'
-        svr_soc.send(json.dumps(jsonpickle.encode(data)).encode('utf-8'))
+        data_to_send = jsonpickle.encode(data).encode('utf-8')
+        svr_soc.send(str(len(data_to_send)).encode('utf-8'))
+        svr_soc.recv(2)
+        svr_soc.send(data_to_send)
+        print("%d: sent metrics to server" %(port))
     elif action == "spl":
         conn.send(str(client.num_samples).encode('utf-8'))
+    elif action == "ntt":
+        conn.send(str(client.num_test_samples).encode('utf-8'))
+    elif action == "ntr":
+        conn.send(str(client.num_train_samples).encode('utf-8'))
     elif action == "stp":
         break
 
