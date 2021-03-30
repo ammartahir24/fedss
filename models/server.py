@@ -14,7 +14,6 @@ class Server:
         self.updates = []
         self.ip = "127.0.0.1"
         self.port = 9999
-        self.k = 5
         threading.Thread(target = self.listener).start()
         self.message_queue = queue.Queue()
 
@@ -99,13 +98,13 @@ class Server:
             # sys_metrics[c.id][LOCAL_COMPUTATIONS_KEY] = comp
 
             # self.updates.append((num_samples, update))
-        sys_metrics = self.collect_updates(round_num, "train", sys_metrics=sys_metrics)
+        sys_metrics = self.collect_updates(round_num, "train", len(clients), sys_metrics=sys_metrics)
 
         return sys_metrics
 
-    def collect_updates(self, round_num, type_, sys_metrics={}):
+    def collect_updates(self, round_num, type_, num_clients, sys_metrics={}):
         num_k = 0
-        while num_k < self.k:
+        while num_k < num_clients:
             data = self.message_queue.get()
             if data['round_num'] < round_num:
                 continue
@@ -157,7 +156,7 @@ class Server:
             # c_metrics = client.test(set_to_use)
             # metrics[client.id] = c_metrics
         
-        metrics = self.collect_updates(num_round, "test", sys_metrics=metrics)
+        metrics = self.collect_updates(num_round, "test", len(clients_to_test), sys_metrics=metrics)
         return metrics
 
     def get_clients_info(self, clients):
