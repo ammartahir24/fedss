@@ -62,7 +62,7 @@ def main():
     server = Server(client_model)
 
     # Create clients
-    clients = setup_clients(args.dataset, args.model, client_model, args.use_val_set, args.seed, args.lr, args.max_clients)
+    clients = setup_clients(args.dataset, args.model, client_model, args.use_val_set, args.seed, args.lr, args.max_clients, args.port)
     client_ids, client_groups, client_num_samples = server.get_clients_info(clients)
     print('Clients in Total: %d' % len(clients))
 
@@ -106,11 +106,11 @@ def online(clients):
     return clients
 
 
-def create_clients(users, groups, train_data, test_data, model, seed, lr, max_clients, dataset, model_):
+def create_clients(users, groups, train_data, test_data, model, seed, lr, max_clients, dataset, model_, port):
     if len(groups) == 0:
         groups = [[] for _ in users]
     # clients = [Client(u, g, train_data[u], test_data[u], model) for u, g in zip(users, groups)]
-    port_assign = 10000
+    port_assign = port
     clients = []
     if max_clients > 0:
         users = users[:max_clients]
@@ -123,7 +123,7 @@ def create_clients(users, groups, train_data, test_data, model, seed, lr, max_cl
     return clients
 
 
-def setup_clients(dataset, model_, model=None, use_val_set=False, seed=0, lr=-1, max_clients=-1):
+def setup_clients(dataset, model_, model=None, use_val_set=False, seed=0, lr=-1, max_clients=-1, port=10000):
     """Instantiates clients based on given train and test data directories.
 
     Return:
@@ -135,7 +135,7 @@ def setup_clients(dataset, model_, model=None, use_val_set=False, seed=0, lr=-1,
 
     users, groups, train_data, test_data = read_data(train_data_dir, test_data_dir)
 
-    clients = create_clients(users, groups, train_data, test_data, model, seed, lr, max_clients, dataset, model_)
+    clients = create_clients(users, groups, train_data, test_data, model, seed, lr, max_clients, dataset, model_, port)
 
     print("num of clients: %d" % (len(clients)))
     #sys.stderr.write("num of clients: %d\n" % ( (len(clients))) )

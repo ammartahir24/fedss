@@ -29,7 +29,7 @@ class Server:
     def handleConn(self, conn):
         data = b''
         while True:
-            d = conn.recv(1024)
+            d = conn.recv()
             if not d:
                 break
             data += d
@@ -86,7 +86,7 @@ class Server:
         server_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server_soc.bind((self.ip, self.port))
         for c in clients:
-            c.model.set_params(self.model)
+            c.model_set_params(self.model)
             c.train(num_epochs, batch_size, minibatch, round_num)
             # comp, num_samples, update = c.train(num_epochs, batch_size, minibatch, round_num)
 
@@ -148,7 +148,7 @@ class Server:
             clients_to_test = self.selected_clients
 
         for client in clients_to_test:
-            client.model.set_params(self.model)
+            client.model_set_params(self.model)
             client.test(set_to_use, num_round)
             # c_metrics = client.test(set_to_use)
             # metrics[client.id] = c_metrics

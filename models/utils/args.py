@@ -53,6 +53,10 @@ def parse_args():
                     help='maximum number of clients;',
                     type=int,
                     default=-1)
+    parser.add_argument('--port',
+                    help='maximum number of clients;',
+                    type=int,
+                    default=10000)
 
     # Minibatch doesn't support num_epochs, so make them mutually exclusive
     epoch_capability_group = parser.add_mutually_exclusive_group()

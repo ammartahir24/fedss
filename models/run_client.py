@@ -6,6 +6,7 @@ import pickle
 import os
 import importlib
 import random
+import jsonpickle
 import tensorflow as tf
 import numpy as np
 from baseline_constants import MAIN_PARAMS, MODEL_PARAMS
@@ -63,12 +64,13 @@ print('--- Client running at (%s, %d) ---' % (ip, port))
 
 while True:
     conn, addr = soc.accept()
-    action = conn.recv(3)
+    action = conn.recv(3).decode('utf-8')
+    print("%s message received from %d" %(action, addr[1]))
     if action == "trn":
         # receive model, and params
         data = b''
         while True:
-            d = conn.recv(1024)
+            d = conn.recv()
             if not d:
                 break
             data += d
@@ -96,7 +98,7 @@ while True:
         # receive model and param
         data = b''
         while True:
-            d = conn.recv(1024)
+            d = conn.recv()
             if not d:
                 break
             data += d
