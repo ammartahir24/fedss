@@ -3,8 +3,8 @@ import os
 import json
 import pickle
 import jsonpickle
+import random
 from subprocess import Popen
-
 
 class ClientComm:
     '''
@@ -18,6 +18,7 @@ class ClientComm:
         self.group = group
         self.model = model
         self.model_params = []
+        self.model_size_bytes = 0
         # write all data
         if not os.path.exists("temp"):
             os.mkdir("temp")
@@ -33,8 +34,7 @@ class ClientComm:
         # data["model"] = model
         # self.model.save("temp/"+ip+str(port)+"model")
         fname_data = "temp/" + ip + str(port) + ".json"
-        fname_log = "temp/" + ip + str(port) + ".log"
-        cmd_client = "python3 run_client.py " + ip + " " + str(port) #+ " > " + fname_log
+        cmd_client = "python3 run_client.py " + ip + " " + str(port) + " " + str(random.randint(1, 12)) + " " + str(round( 2.898 / random.randint(1, 12), 3 ))
         with open(fname_data, 'w') as outfile:
             json.dump(data, outfile)
         # To Do: spawn process in mahimahi shell
@@ -90,7 +90,7 @@ class ClientComm:
     @property
     def num_samples(self):
         # get num_samples from client and return
-        print("num_samples requested on %d" %(self.port))
+        # print("num_samples requested on %d" %(self.port))
         soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         soc.connect((self.ip, self.port))
         soc.send("spl".encode("utf-8"))
@@ -99,7 +99,7 @@ class ClientComm:
     @property
     def num_test_samples(self):
         # get num_samples from client and return
-        print("num_test_samples requested on %d" %(self.port))
+        # print("num_test_samples requested on %d" %(self.port))
         soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         soc.connect((self.ip, self.port))
         soc.send("ntt".encode("utf-8"))
@@ -108,8 +108,17 @@ class ClientComm:
     @property
     def num_train_samples(self):
         # get num_samples from client and return
-        print("num_train_samples requested on %d" %(self.port))
+        # print("num_train_samples requested on %d" %(self.port))
         soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         soc.connect((self.ip, self.port))
         soc.send("ntr".encode("utf-8"))
         return int(soc.recv(1024).decode('utf-8'))
+
+    @property
+    def client_env(self):
+        # The time(in ms) it takes to train one batch in one epoch
+        soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        soc.connect((self.ip, self.port))
+        soc.send("env".encode("utf-8"))
+        data = jsonpickle.decode(soc.recv(1024).decode("utf-8"))
+        return data

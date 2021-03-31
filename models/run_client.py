@@ -10,12 +10,15 @@ import jsonpickle
 import tensorflow as tf
 import numpy as np
 from baseline_constants import MAIN_PARAMS, MODEL_PARAMS
+import time
 # from tensorflow import keras
 
 '''
 Runs Client instance and manages all its communication with the server (managed by ClientComm)
+bandwidth(MBps): average network bandwidth
+train_timeratio(ms/sample): training time per sample
 '''
-ip, port = sys.argv[1], int(sys.argv[2])
+ip, port, bandwidth, train_timeratio = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), float(sys.argv[4])
 server_ip, server_port = "127.0.0.1", 9999 # replace 127.0.0.1 with mahimahi assigned IP?
 data = {}
 with open("temp/"+ip+str(port)+".json", 'r') as json_file:
@@ -75,9 +78,10 @@ print('--- Client running at (%s, %d) ---' % (ip, port))
 while True:
     conn, addr = soc.accept()
     action = conn.recv(3).decode('utf-8')
-    print("%s message received from %d" %(action, addr[1]))
+    #print("%s message received from %d" %(action, addr[1]))
     if action == "trn":
         # receive model, and params
+        ts_start = time.time()
         msg_len = int(conn.recv(1024).decode('utf-8'))
         conn.send("ok".encode('utf-8'))
         data = msg_recv(conn, msg_len)
@@ -87,11 +91,14 @@ while True:
         batch_size = data['batch_size']
         minibatch = data['minibatch']
         round_num = data['round_num']
-        print("%d: model received, starting training" %(port))
+        print("%s: model received, starting training" %(user))
         client.model.set_params(model)
         comp, num_samples, update = client.train(num_epochs, batch_size, minibatch)
+        ts_end = time.time()
+        simulated_time = int(msg_len / bandwidth / 1000 + client.num_train_samples * train_timeratio)
+        time.sleep(simulated_time / 1000 - (ts_end - ts_start))
         # send updates to server
-        print("%d: training complete, sending weights to server" %(port))
+        print("%s: training complete, sending weights to server, training time: %f ms" %(user, simulated_time))
         svr_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         svr_soc.connect((server_ip, server_port))
         data = {}
@@ -117,10 +124,10 @@ while True:
         model = data['model']
         set_to_use = data['set_to_use']
         round_num = data['round_num']
-        print("%d: model received, starting testing" %(port))
+        print("%s: model received, starting testing" %(user))
         client.model.set_params(model)
         c_metrics = client.test(set_to_use)
-        print("%d: testing complete, sending metrics to server" %(port))
+        print("%s: testing complete, sending metrics to server" %(user))
         # send c_metrics to server
         svr_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         svr_soc.connect((server_ip, server_port))
@@ -142,25 +149,9 @@ while True:
         conn.send(str(client.num_train_samples).encode('utf-8'))
     elif action == "stp":
         break
-
-# class ClientAsync:
-#     def __init__():
-#         pass
-
-# if __name__ == "__main__":
-#     print("--- Client process initiated")
-#     ip, port = sys.argv[1], int(sys.argv[2])
-#     server_ip, server_port = "127.0.0.1", 9999
-#     soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#     soc.bind((ip, port))
-#     soc.listen()
-#     print('--- Client running at (%s, %d) ---' % (ip, port))
-#     while True:
-#         conn, addr = soc.accept()
-#         data_binary = b''
-#         while True:
-#             d = conn.recv(1024)
-#             if not d:
-#                 break
-#             data_binary += d
-#         print(data_binary)
+    elif action == "env":
+        data = {}
+        data["train_timeratio"] = train_timeratio
+        data["bandwidth"] = bandwidth
+        data_to_send = jsonpickle.encode(data).encode("utf-8")
+        conn.send(data_to_send)

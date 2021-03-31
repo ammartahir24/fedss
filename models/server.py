@@ -4,6 +4,7 @@ import threading
 import queue
 from baseline_constants import BYTES_WRITTEN_KEY, BYTES_READ_KEY, LOCAL_COMPUTATIONS_KEY
 import jsonpickle
+import json
 
 class Server:
     
@@ -53,11 +54,24 @@ class Server:
         Return:
             list of (num_train_samples, num_test_samples)
         """
+        samples_dict = {}
+        envs_dict = {}
+        time_dict = {}
+        model_size = len(json.dumps(jsonpickle.encode(self.model)).encode('utf-8'))
+        for c in possible_clients:
+            samples_dict[c] = (c.num_train_samples, c.num_test_samples)
+            envs_dict[c] = c.client_env
+            time_dict[c] = model_size / envs_dict[c]["bandwidth"] / 1000 + samples_dict[c][0] * envs_dict[c]["train_timeratio"]
+            print("user: %s num_train: %d num_test: %d model_size: %d time: %d ms" % \
+                (c.id, samples_dict[c][0], samples_dict[c][1], model_size, time_dict[c]))
+            print(envs_dict[c])
+            
+            
         num_clients = min(num_clients, len(possible_clients))
         np.random.seed(my_round)
         self.selected_clients = np.random.choice(possible_clients, num_clients, replace=False)
 
-        return [(c.num_train_samples, c.num_test_samples) for c in self.selected_clients]
+        return [samples_dict[c] for c in self.selected_clients]
 
     def train_model(self, num_epochs=1, batch_size=10, minibatch=None, clients=None, round_num=0):
         """Trains self.model on given clients.
