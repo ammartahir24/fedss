@@ -64,6 +64,7 @@ def main():
     # Create clients
     clients = setup_clients(args.dataset, args.model, client_model, args.use_val_set, args.seed, args.lr, args.max_clients, args.port)
     client_ids, client_groups, client_num_samples = server.get_clients_info(clients)
+    clients = server.create_round_pattern(clients)
     print('Clients in Total: %d' % len(clients))
 
     # Initial status
@@ -77,7 +78,7 @@ def main():
         print('--- Round %d of %d: Training %d Clients ---' % (i + 1, num_rounds, clients_per_round))
 
         # Select clients to train this round
-        server.select_clients(i, online(clients), num_clients=clients_per_round)
+        server.smart_select_clients(i, online(clients), num_clients=clients_per_round)
         c_ids, c_groups, c_num_samples = server.get_clients_info(server.selected_clients)
 
         # Simulate server model training on selected clients' data

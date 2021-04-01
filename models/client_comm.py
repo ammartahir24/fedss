@@ -16,9 +16,12 @@ class ClientComm:
         self.port = port
         self.id = user
         self.group = group
+        self.round_group = -1
         self.model = model
         self.model_params = []
         self.model_size_bytes = 0
+        self.bandwidth = random.randint(1, 12)
+        self.train_timeratio = round( 2.898 / random.randint(1, 12), 3)
         # write all data
         if not os.path.exists("temp"):
             os.mkdir("temp")
@@ -34,7 +37,7 @@ class ClientComm:
         # data["model"] = model
         # self.model.save("temp/"+ip+str(port)+"model")
         fname_data = "temp/" + ip + str(port) + ".json"
-        cmd_client = "python3 run_client.py " + ip + " " + str(port) + " " + str(random.randint(1, 12)) + " " + str(round( 2.898 / random.randint(1, 12), 3 ))
+        cmd_client = "python3 run_client.py " + ip + " " + str(port) + " " + str(self.bandwidth) + " " + str(self.train_timeratio)
         with open(fname_data, 'w') as outfile:
             json.dump(data, outfile)
         # To Do: spawn process in mahimahi shell
@@ -117,8 +120,11 @@ class ClientComm:
     @property
     def client_env(self):
         # The time(in ms) it takes to train one batch in one epoch
-        soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        soc.connect((self.ip, self.port))
-        soc.send("env".encode("utf-8"))
-        data = jsonpickle.decode(soc.recv(1024).decode("utf-8"))
+        data = {}
+        data["train_timeratio"] = self.train_timeratio
+        data["bandwidth"] = self.bandwidth
+        # soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # soc.connect((self.ip, self.port))
+        # soc.send("env".encode("utf-8"))
+        # data = jsonpickle.decode(soc.recv(1024).decode("utf-8"))
         return data

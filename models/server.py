@@ -5,6 +5,7 @@ import queue
 from baseline_constants import BYTES_WRITTEN_KEY, BYTES_READ_KEY, LOCAL_COMPUTATIONS_KEY
 import jsonpickle
 import json
+import random
 
 class Server:
     
@@ -17,6 +18,8 @@ class Server:
         self.port = 9999
         threading.Thread(target = self.listener).start()
         self.message_queue = queue.Queue()
+        self.round_type_pattern = [0,0,1]
+        self.current_round_type = 0
 
     def listener(self):
         soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -53,25 +56,84 @@ class Server:
             num_clients: Number of clients to select; default 20
         Return:
             list of (num_train_samples, num_test_samples)
-        """
-        samples_dict = {}
-        envs_dict = {}
-        time_dict = {}
-        model_size = len(json.dumps(jsonpickle.encode(self.model)).encode('utf-8'))
-        for c in possible_clients:
-            samples_dict[c] = (c.num_train_samples, c.num_test_samples)
-            envs_dict[c] = c.client_env
-            time_dict[c] = model_size / envs_dict[c]["bandwidth"] / 1000 + samples_dict[c][0] * envs_dict[c]["train_timeratio"]
-            print("user: %s num_train: %d num_test: %d model_size: %d time: %d ms" % \
-                (c.id, samples_dict[c][0], samples_dict[c][1], model_size, time_dict[c]))
-            print(envs_dict[c])
-            
-            
+        """ 
+
         num_clients = min(num_clients, len(possible_clients))
         np.random.seed(my_round)
         self.selected_clients = np.random.choice(possible_clients, num_clients, replace=False)
 
-        return [samples_dict[c] for c in self.selected_clients]
+        return [(c.num_train_samples, c.num_test_samples) for c in self.selected_clients]
+
+    def closest_to(self, x, xs):
+        x_xs = [abs(x_-x) for x_ in xs]
+        return x_xs.index(min(x_xs))
+
+    def create_round_pattern(self, clients):
+        percentiles = [0.25, 0.5, 0.75] # automate a way to find these
+        model_size = len(json.dumps(jsonpickle.encode(self.model)).encode('utf-8'))
+        c_to_times = {}
+        c_to_groups = {}
+        for c in clients:
+            c_envs = c.client_env
+            c_num_train_samples = c.num_train_samples
+            time_to_train = model_size / c_envs["bandwidth"] / 1000 + c_num_train_samples * c_envs["train_timeratio"]
+            c_to_times[c.id] = time_to_train
+        times = sorted(list(c_to_times.values()))
+        print(times)
+        time_percentiles = [times[int(p*len(times))] for p in percentiles]
+        print(time_percentiles)
+        for c,t in c_to_times.items():
+            c_to_groups[c] = self.closest_to(t, time_percentiles)
+        groups = sorted(list(c_to_groups.values()))
+        print(groups)
+        for c in clients:
+            c.round_group = c_to_groups[c.id]
+        group_counts = {}
+        for i in range(max(groups)+1):
+            group_counts[i] = groups.count(i)
+        min_percentage = min(list(group_counts.values())) / len(groups)
+        round_type_pattern = []
+        for k,v in group_counts.items():
+            v_percentage = v / len(groups)
+            v_ratio = int(0.5+ (v_percentage / min_percentage))
+            round_type_pattern += [k]*v_ratio
+        print(round_type_pattern)
+        self.round_type_pattern = random.shuffle(round_type_pattern)
+        return clients
+
+    def smart_select_clients(self, my_round, clients, num_clients=20):
+        """Selects num_clients clients randomly from possible_clients.
+        
+        Note that within function, num_clients is set to
+            min(num_clients, len(possible_clients)).
+
+        Args:
+            possible_clients: Clients from which the server can select.
+            num_clients: Number of clients to select; default 20
+        Return:
+            list of (num_train_samples, num_test_samples)
+        """
+        # samples_dict = {}
+        # envs_dict = {}
+        # time_dict = {}
+        # model_size = len(json.dumps(jsonpickle.encode(self.model)).encode('utf-8'))
+        # for c in possible_clients:
+        #     samples_dict[c] = (c.num_train_samples, c.num_test_samples)
+        #     envs_dict[c] = c.client_env
+        #     time_dict[c] = model_size / envs_dict[c]["bandwidth"] / 1000 + samples_dict[c][0] * envs_dict[c]["train_timeratio"]
+        #     print("user: %s num_train: %d num_test: %d model_size: %d time: %d ms" % \
+        #         (c.id, samples_dict[c][0], samples_dict[c][1], model_size, time_dict[c]))
+        #     print(envs_dict[c])
+            
+        possible_clients = [c for c in clients if c.round_group == self.round_type_pattern[self.current_round_type]]
+        num_clients = min(num_clients, len(possible_clients))
+        np.random.seed(my_round)
+        self.selected_clients = np.random.choice(possible_clients, num_clients, replace=False)
+        if len(self.select_clients) < num_clients:
+            possible_clients_backup = [c for c in clients if c.round_group < self.round_type_pattern[self.current_round_type]]
+            self.select_clients += np.random.choice(possible_clients_backup, num_clients - len(self.selected_clients), replace=False)
+        self.current_round_type = (self.current_round_type + 1) % len(self.round_type_pattern)
+        return [(c.num_train_samples, c.num_test_samples) for c in self.selected_clients]
 
     def train_model(self, num_epochs=1, batch_size=10, minibatch=None, clients=None, round_num=0):
         """Trains self.model on given clients.
