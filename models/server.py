@@ -98,7 +98,8 @@ class Server:
             v_ratio = int(0.5+ (v_percentage / min_percentage))
             round_type_pattern += [k]*v_ratio
         print(round_type_pattern)
-        self.round_type_pattern = random.shuffle(round_type_pattern)
+        random.shuffle(round_type_pattern)
+        self.round_type_pattern = round_type_pattern
         return clients
 
     def smart_select_clients(self, my_round, clients, num_clients=20):
@@ -124,14 +125,13 @@ class Server:
         #     print("user: %s num_train: %d num_test: %d model_size: %d time: %d ms" % \
         #         (c.id, samples_dict[c][0], samples_dict[c][1], model_size, time_dict[c]))
         #     print(envs_dict[c])
-            
         possible_clients = [c for c in clients if c.round_group == self.round_type_pattern[self.current_round_type]]
         num_clients = min(num_clients, len(possible_clients))
         np.random.seed(my_round)
         self.selected_clients = np.random.choice(possible_clients, num_clients, replace=False)
-        if len(self.select_clients) < num_clients:
+        if len(self.selected_clients) < num_clients:
             possible_clients_backup = [c for c in clients if c.round_group < self.round_type_pattern[self.current_round_type]]
-            self.select_clients += np.random.choice(possible_clients_backup, num_clients - len(self.selected_clients), replace=False)
+            self.selected_clients += np.random.choice(possible_clients_backup, num_clients - len(self.selected_clients), replace=False)
         self.current_round_type = (self.current_round_type + 1) % len(self.round_type_pattern)
         return [(c.num_train_samples, c.num_test_samples) for c in self.selected_clients]
 
