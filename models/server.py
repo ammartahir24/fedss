@@ -5,6 +5,7 @@ import queue
 from baseline_constants import BYTES_WRITTEN_KEY, BYTES_READ_KEY, LOCAL_COMPUTATIONS_KEY
 import jsonpickle
 import json
+import time
 import random
 
 class Server:
@@ -16,10 +17,19 @@ class Server:
         self.updates = []
         self.ip = "127.0.0.1"
         self.port = 9999
-        threading.Thread(target = self.listener).start()
+        self.k = -1
+        threading.Thread(target = self.listener, daemon=True).start()
         self.message_queue = queue.Queue()
         self.round_type_pattern = [0,0,1]
         self.current_round_type = 0
+        log = open("temp/log.txt", 'w')
+        log.write("%d\n" %(time.time()))
+        log.close()
+
+    def write_log(self, line):
+        log = open("temp/log.txt", 'a')
+        log.write(line)
+        log.close()
 
     def listener(self):
         soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -27,7 +37,7 @@ class Server:
         soc.listen(20)
         while True:
             conn, addr = soc.accept()
-            threading.Thread(target = self.handleConn, args=(conn,addr)).start()
+            threading.Thread(target = self.handleConn, daemon=True, args=(conn,addr)).start()
     
     def msg_recv(self, conn, msg_len):
         recv_len = 0
@@ -135,7 +145,7 @@ class Server:
         self.current_round_type = (self.current_round_type + 1) % len(self.round_type_pattern)
         return [(c.num_train_samples, c.num_test_samples) for c in self.selected_clients]
 
-    def train_model(self, num_epochs=1, batch_size=10, minibatch=None, clients=None, round_num=0):
+    def train_model(self, num_epochs=1, batch_size=10, minibatch=None, clients=None, round_num=0, k=-1):
         """Trains self.model on given clients.
         
         Trains model on self.selected_clients if clients=None;
@@ -164,6 +174,7 @@ class Server:
                    LOCAL_COMPUTATIONS_KEY: 0} for c in clients}
         
         # TO DO: Add two loops: first distribute model to selected_clients, second waits for k responses
+        ts_start = time.time()
         for c in clients:
             c.model_set_params(self.model)
             c.train(num_epochs, batch_size, minibatch, round_num)
@@ -174,8 +185,12 @@ class Server:
             # sys_metrics[c.id][LOCAL_COMPUTATIONS_KEY] = comp
 
             # self.updates.append((num_samples, update))
-        sys_metrics = self.collect_updates(round_num, "train", len(clients), sys_metrics=sys_metrics)
-
+        if k==-1:
+            k = len(clients)
+        sys_metrics = self.collect_updates(round_num, "train", min(k, len(clients)), sys_metrics=sys_metrics)
+        ts_end = time.time()
+        round_time = ts_end - ts_start
+        self.write_log("Round time for round no. %d: %f\n" %(round_num, round_time))
         return sys_metrics
 
     def collect_updates(self, round_num, type_, num_clients, sys_metrics={}):
@@ -233,6 +248,8 @@ class Server:
             # metrics[client.id] = c_metrics
         
         metrics = self.collect_updates(num_round, "test", len(clients_to_test), sys_metrics=metrics)
+        for k,v in metrics.items():
+            self.write_log("%d round@ %s for %s data: accuracy = %f, loss = %f\n" %(num_round, k, set_to_use, v['accuracy'], v['loss']))
         return metrics
 
     def get_clients_info(self, clients):

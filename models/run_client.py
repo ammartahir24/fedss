@@ -11,6 +11,7 @@ import tensorflow as tf
 import numpy as np
 from baseline_constants import MAIN_PARAMS, MODEL_PARAMS
 import time
+import threading
 # from tensorflow import keras
 
 '''
@@ -70,14 +71,7 @@ def msg_recv(conn, msg_len):
         recv_len += len(d)
     return data
 
-soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-soc.bind((ip, port))
-soc.listen()
-print('--- Client running at (%s, %d) ---' % (ip, port))
-
-while True:
-    conn, addr = soc.accept()
-    action = conn.recv(3).decode('utf-8')
+def handleConn(conn, addr, action):
     #print("%s message received from %d" %(action, addr[1]))
     if action == "trn":
         # receive model, and params
@@ -96,9 +90,10 @@ while True:
         comp, num_samples, update = client.train(num_epochs, batch_size, minibatch)
         ts_end = time.time()
         simulated_time = int(msg_len / bandwidth / 1000 + client.num_train_samples * train_timeratio)
-        time.sleep(simulated_time / 1000 - (ts_end - ts_start))
+        time_to_sleep = simulated_time / 1000 - (ts_end - ts_start)
+        if time_to_sleep > 0:
+            time.sleep(time_to_sleep)
         # send updates to server
-        print("%s: training complete, sending weights to server, training time: %f ms" %(user, simulated_time))
         svr_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         svr_soc.connect((server_ip, server_port))
         data = {}
@@ -113,21 +108,22 @@ while True:
         svr_soc.send(str(len(data_to_send)).encode('utf-8'))
         svr_soc.recv(2)
         svr_soc.send(data_to_send)
+        print("%s: training complete, weights sent to server, total time: %f ms" %(user, simulated_time))
     elif action == "tst":
         # receive model and param
         msg_len = int(conn.recv(1024).decode('utf-8'))
         conn.send("ok".encode('utf-8'))
-        print("%d: receiving %d bytes" %(port, msg_len))
+        # print("%d: receiving %d bytes" %(port, msg_len))
         data = msg_recv(conn, msg_len)
         assert(len(data) == msg_len)
         data = jsonpickle.decode(data.decode('utf-8'))
         model = data['model']
         set_to_use = data['set_to_use']
         round_num = data['round_num']
-        print("%s: model received, starting testing" %(user))
+        # print("%s: model received, starting testing" %(user))
         client.model.set_params(model)
         c_metrics = client.test(set_to_use)
-        print("%s: testing complete, sending metrics to server" %(user))
+        # print("%s: testing complete, sending metrics to server" %(user))
         # send c_metrics to server
         svr_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         svr_soc.connect((server_ip, server_port))
@@ -140,18 +136,28 @@ while True:
         svr_soc.send(str(len(data_to_send)).encode('utf-8'))
         svr_soc.recv(2)
         svr_soc.send(data_to_send)
-        print("%d: sent metrics to server" %(port))
+        # print("%d: sent metrics to server" %(port))
     elif action == "spl":
         conn.send(str(client.num_samples).encode('utf-8'))
     elif action == "ntt":
         conn.send(str(client.num_test_samples).encode('utf-8'))
     elif action == "ntr":
         conn.send(str(client.num_train_samples).encode('utf-8'))
-    elif action == "stp":
-        break
     elif action == "env":
         data = {}
         data["train_timeratio"] = train_timeratio
         data["bandwidth"] = bandwidth
         data_to_send = jsonpickle.encode(data).encode("utf-8")
         conn.send(data_to_send)
+
+
+soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+soc.bind((ip, port))
+soc.listen()
+print('--- Client running at (%s, %d) ---' % (ip, port))
+while True:
+    conn, addr = soc.accept()
+    action = conn.recv(3).decode('utf-8')
+    if action == 'stp':
+        sys.exit()
+    threading.Thread(target = handleConn, daemon=True, args=(conn,addr,action)).start()

@@ -64,6 +64,8 @@ def main():
     # Create clients
     clients = setup_clients(args.dataset, args.model, client_model, args.use_val_set, args.seed, args.lr, args.max_clients, args.port)
     client_ids, client_groups, client_num_samples = server.get_clients_info(clients)
+    write_log(str(client_ids)+"\n")
+    write_log(str(client_num_samples)+"\n")
     clients = server.create_round_pattern(clients)
     print('Clients in Total: %d' % len(clients))
 
@@ -78,11 +80,12 @@ def main():
         print('--- Round %d of %d: Training %d Clients ---' % (i + 1, num_rounds, clients_per_round))
 
         # Select clients to train this round
-        server.smart_select_clients(i, online(clients), num_clients=clients_per_round)
+        # server.smart_select_clients(i, online(clients), num_clients=clients_per_round)
+        server.select_clients(i, online(clients), num_clients=clients_per_round)
         c_ids, c_groups, c_num_samples = server.get_clients_info(server.selected_clients)
 
         # Simulate server model training on selected clients' data
-        sys_metrics = server.train_model(num_epochs=args.num_epochs, batch_size=args.batch_size, minibatch=args.minibatch, round_num=i+1)
+        sys_metrics = server.train_model(num_epochs=args.num_epochs, batch_size=args.batch_size, minibatch=args.minibatch, round_num=i+1, k=args.k)
         sys_writer_fn(i + 1, c_ids, sys_metrics, c_groups, c_num_samples)
         
         # Update server model
@@ -98,7 +101,8 @@ def main():
         os.makedirs(ckpt_path)
     save_path = server.save_model(os.path.join(ckpt_path, '{}.ckpt'.format(args.model)))
     print('Model saved in path: %s' % save_path)
-
+    for c in clients:
+        c.stop()
     # Close models
     server.close_model()
 
@@ -166,16 +170,16 @@ def print_stats(
     num_round, server, clients, num_samples, args, writer, use_val_set):
     
     train_stat_metrics = server.test_model(clients, num_round, set_to_use='train')
-    print_metrics(train_stat_metrics, num_samples, prefix='train_')
+    print_metrics(train_stat_metrics, num_samples, prefix='train_', num_round=num_round)
     writer(num_round, train_stat_metrics, 'train')
 
     eval_set = 'test' if not use_val_set else 'val'
     test_stat_metrics = server.test_model(clients, num_round, set_to_use=eval_set)
-    print_metrics(test_stat_metrics, num_samples, prefix='{}_'.format(eval_set))
+    print_metrics(test_stat_metrics, num_samples, prefix='{}_'.format(eval_set), num_round=num_round)
     writer(num_round, test_stat_metrics, eval_set)
 
 
-def print_metrics(metrics, weights, prefix=''):
+def print_metrics(metrics, weights, prefix='', num_round=0):
     """Prints weighted averages of the given metrics.
 
     Args:
@@ -195,7 +199,18 @@ def print_metrics(metrics, weights, prefix=''):
                  np.percentile(ordered_metric, 10),
                  np.percentile(ordered_metric, 50),
                  np.percentile(ordered_metric, 90)))
+        write_log('%d round: %s: %g, 10th percentile: %g, 50th percentile: %g, 90th percentile %g\n' \
+              % (num_round ,prefix + metric,
+                 np.average(ordered_metric, weights=ordered_weights),
+                 np.percentile(ordered_metric, 10),
+                 np.percentile(ordered_metric, 50),
+                 np.percentile(ordered_metric, 90)))
 
+def write_log(line):
+    log = open("temp/log.txt", 'a')
+    log.write(line)
+    log.close()
 
 if __name__ == '__main__':
     main()
+    sys.exit()
