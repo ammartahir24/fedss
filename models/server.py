@@ -86,8 +86,13 @@ class Server:
         for c in clients:
             c_envs = c.client_env
             c_num_train_samples = c.num_train_samples
-            time_to_train = model_size / c_envs["bandwidth"] / 1000 + c_num_train_samples * c_envs["train_timeratio"]
+            #time_to_train = model_size / c_envs["bandwidth"] / 1000 + c_num_train_samples * c_envs["train_timeratio"]
+            network_delay = model_size / c_envs["bandwidth"] / 1000
+            compute_time = c_num_train_samples * c_envs["train_timeratio"]
+            time_to_train = network_delay + compute_time
             c_to_times[c.id] = time_to_train
+            self.write_log("user: %s train_time: %d network: %d compute: %d ms model_size: %d\n" % \
+                    (str(c.id), time_to_train, network_delay, compute_time, model_size) )
         times = sorted(list(c_to_times.values()))
         print(times)
         time_percentiles = [times[int(p*len(times))] for p in percentiles]
@@ -175,7 +180,6 @@ class Server:
                    'time': 0} for c in clients}
 
         # TO DO: Add two loops: first distribute model to selected_clients, second waits for k responses
-        #ts_start = time.time()
         for c in clients:
             c.model_set_params(self.model)
             c.train(num_epochs, batch_size, minibatch, round_num)
@@ -188,23 +192,23 @@ class Server:
             # self.updates.append((num_samples, update))
         if k==-1:
             k = len(clients)
-        sys_metrics = self.collect_updates(round_num, "train", min(k, len(clients)), sys_metrics=sys_metrics)
-        #ts_end = time.time()
-        #round_time = ts_end - ts_start
-        train_time = max( [ v['time'] for v in sys_metrics.values() ] )
-        self.write_log("Round: %d time: %d ms\n" %(round_num, train_time))
+        sys_metrics = self.collect_updates(round_num, "train", k, len(clients), sys_metrics=sys_metrics)
+        train_time = [ v['time'] for v in sys_metrics.values() ]
+        train_time.sort()
+        self.write_log("Round: %d time: %d ms\n" %(round_num, train_time[k-1]))
         return sys_metrics
 
-    def collect_updates(self, round_num, type_, num_clients, sys_metrics={}):
-        num_k = 0
-        while num_k < num_clients:
+    def collect_updates(self, round_num, type_, num_k, num_clients, sys_metrics={}):
+        i = 0
+        all_updates = []
+        while i < num_clients:
             data = self.message_queue.get()
             if data['round_num'] < round_num:
                 continue
             elif data['type'] == type_ and type_ == "test" and data['round_num'] == round_num:
                 c_metrics, c_id = data['c_metrics'], data['id']
                 sys_metrics[c_id] = c_metrics
-                num_k += 1
+                i += 1
             elif data['type'] == type_ and type_ == "train" and data['round_num'] == round_num:
                 comp, num_samples, update, c_id, c_model_size, train_time = data['comp'], data['num_samples'], data['update'], data['id'], data['model_size'], data['time']
                 sys_metrics[c_id][BYTES_READ_KEY] += c_model_size
@@ -212,10 +216,16 @@ class Server:
                 sys_metrics[c_id][LOCAL_COMPUTATIONS_KEY] = comp
                 sys_metrics[c_id]['time'] = train_time
 
-                self.updates.append((num_samples, update))
-                num_k += 1
+                #self.updates.append((num_samples, update))
+                all_updates.append((train_time, (num_samples, update), c_id))
+                i += 1
             else:
                 self.message_queue.put(data)
+        if len(all_updates) != 0:
+            all_updates.sort(key = lambda x : x[0])
+            for j in range(num_k):
+                #self.write_log("user: %s train_time: %d" % (all_updates[j][2], all_updates[j][0]))
+                self.updates.append( all_updates[j][1] )
         return sys_metrics
 
     def update_model(self):
@@ -250,7 +260,7 @@ class Server:
             # c_metrics = client.test(set_to_use)
             # metrics[client.id] = c_metrics
 
-        metrics = self.collect_updates(num_round, "test", len(clients_to_test), sys_metrics=metrics)
+        metrics = self.collect_updates(num_round, "test", len(clients_to_test), len(clients_to_test), sys_metrics=metrics)
         for k,v in metrics.items():
             self.write_log("%d round@ %s for %s data: accuracy = %f, loss = %f\n" %(num_round, k, set_to_use, v['accuracy'], v['loss']))
         return metrics
