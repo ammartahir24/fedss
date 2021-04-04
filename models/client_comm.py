@@ -21,7 +21,7 @@ class ClientComm:
         self.model_params = []
         self.model_size_bytes = 0
         self.bandwidth = random.randint(3, 12)
-        self.train_timeratio = round( 2.898 / random.randint(3, 12), 3)
+        self.train_timeratio = round( 2.898 * random.randint(3, 12), 3)
         # write all data
         if not os.path.exists("temp"):
             os.mkdir("temp")

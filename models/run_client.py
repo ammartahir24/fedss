@@ -75,7 +75,7 @@ def handleConn(conn, addr, action):
     #print("%s message received from %d" %(action, addr[1]))
     if action == "trn":
         # receive model, and params
-        ts_start = time.time()
+        #ts_start = time.time()
         msg_len = int(conn.recv(1024).decode('utf-8'))
         conn.send("ok".encode('utf-8'))
         data = msg_recv(conn, msg_len)
@@ -85,14 +85,17 @@ def handleConn(conn, addr, action):
         batch_size = data['batch_size']
         minibatch = data['minibatch']
         round_num = data['round_num']
-        print("%s: model received, starting training" %(user))
+        #print("%s: model received, starting training" %(user))
         client.model.set_params(model)
         comp, num_samples, update = client.train(num_epochs, batch_size, minibatch)
-        ts_end = time.time()
-        simulated_time = int(msg_len / bandwidth / 1000 + client.num_train_samples * train_timeratio)
-        time_to_sleep = simulated_time / 1000 - (ts_end - ts_start)
-        if time_to_sleep > 0:
-            time.sleep(time_to_sleep)
+        #ts_end = time.time()
+        network_delay = int(msg_len / bandwidth / 1000)
+        compute_time = client.num_train_samples * train_timeratio
+        simulated_time = network_delay + compute_time
+        #simulated_time = int(msg_len / bandwidth / 1000 + client.num_train_samples * train_timeratio)
+        #time_to_sleep = simulated_time / 1000 - (ts_end - ts_start)
+        #if time_to_sleep > 0:
+        #    time.sleep(time_to_sleep)
         # send updates to server
         svr_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         svr_soc.connect((server_ip, server_port))
@@ -104,11 +107,13 @@ def handleConn(conn, addr, action):
         data['type'] = 'train'
         data['id'] = client.id
         data['model_size'] = client.model.size
+        data['time'] = simulated_time
         data_to_send = jsonpickle.encode(data).encode('utf-8')
         svr_soc.send(str(len(data_to_send)).encode('utf-8'))
         svr_soc.recv(2)
         svr_soc.send(data_to_send)
-        print("%s: training complete, weights sent to server, total time: %f ms" %(user, simulated_time))
+        print("training user: %s total_time: %d train_time: %d network_delay: %d ms" \
+                %(user, simulated_time, compute_time, network_delay))
     elif action == "tst":
         # receive model and param
         msg_len = int(conn.recv(1024).decode('utf-8'))

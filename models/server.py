@@ -9,7 +9,7 @@ import time
 import random
 
 class Server:
-    
+
     def __init__(self, client_model):
         self.client_model = client_model
         self.model = client_model.get_params()
@@ -38,7 +38,7 @@ class Server:
         while True:
             conn, addr = soc.accept()
             threading.Thread(target = self.handleConn, daemon=True, args=(conn,addr)).start()
-    
+
     def msg_recv(self, conn, msg_len):
         recv_len = 0
         data = b''
@@ -57,7 +57,7 @@ class Server:
 
     def select_clients(self, my_round, possible_clients, num_clients=20):
         """Selects num_clients clients randomly from possible_clients.
-        
+
         Note that within function, num_clients is set to
             min(num_clients, len(possible_clients)).
 
@@ -66,7 +66,7 @@ class Server:
             num_clients: Number of clients to select; default 20
         Return:
             list of (num_train_samples, num_test_samples)
-        """ 
+        """
 
         num_clients = min(num_clients, len(possible_clients))
         np.random.seed(my_round)
@@ -114,7 +114,7 @@ class Server:
 
     def smart_select_clients(self, my_round, clients, num_clients=20):
         """Selects num_clients clients randomly from possible_clients.
-        
+
         Note that within function, num_clients is set to
             min(num_clients, len(possible_clients)).
 
@@ -147,7 +147,7 @@ class Server:
 
     def train_model(self, num_epochs=1, batch_size=10, minibatch=None, clients=None, round_num=0, k=-1):
         """Trains self.model on given clients.
-        
+
         Trains model on self.selected_clients if clients=None;
         each client's data is trained with the given number of epochs
         and batches.
@@ -159,7 +159,7 @@ class Server:
             minibatch: fraction of client's data to apply minibatch sgd,
                 None to use FedAvg
         Return:
-            bytes_written: number of bytes written by each client to server 
+            bytes_written: number of bytes written by each client to server
                 dictionary with client ids as keys and integer values.
             client computations: number of FLOPs computed by each client
                 dictionary with client ids as keys and integer values.
@@ -171,10 +171,11 @@ class Server:
         sys_metrics = {
             c.id: {BYTES_WRITTEN_KEY: 0,
                    BYTES_READ_KEY: 0,
-                   LOCAL_COMPUTATIONS_KEY: 0} for c in clients}
-        
+                   LOCAL_COMPUTATIONS_KEY: 0,
+                   'time': 0} for c in clients}
+
         # TO DO: Add two loops: first distribute model to selected_clients, second waits for k responses
-        ts_start = time.time()
+        #ts_start = time.time()
         for c in clients:
             c.model_set_params(self.model)
             c.train(num_epochs, batch_size, minibatch, round_num)
@@ -188,9 +189,10 @@ class Server:
         if k==-1:
             k = len(clients)
         sys_metrics = self.collect_updates(round_num, "train", min(k, len(clients)), sys_metrics=sys_metrics)
-        ts_end = time.time()
-        round_time = ts_end - ts_start
-        self.write_log("Round time for round no. %d: %f\n" %(round_num, round_time))
+        #ts_end = time.time()
+        #round_time = ts_end - ts_start
+        train_time = max( [ v['time'] for v in sys_metrics.values() ] )
+        self.write_log("Round: %d time: %d ms\n" %(round_num, train_time))
         return sys_metrics
 
     def collect_updates(self, round_num, type_, num_clients, sys_metrics={}):
@@ -204,10 +206,11 @@ class Server:
                 sys_metrics[c_id] = c_metrics
                 num_k += 1
             elif data['type'] == type_ and type_ == "train" and data['round_num'] == round_num:
-                comp, num_samples, update, c_id, c_model_size = data['comp'], data['num_samples'], data['update'], data['id'], data['model_size']
+                comp, num_samples, update, c_id, c_model_size, train_time = data['comp'], data['num_samples'], data['update'], data['id'], data['model_size'], data['time']
                 sys_metrics[c_id][BYTES_READ_KEY] += c_model_size
                 sys_metrics[c_id][BYTES_WRITTEN_KEY] += c_model_size
                 sys_metrics[c_id][LOCAL_COMPUTATIONS_KEY] = comp
+                sys_metrics[c_id]['time'] = train_time
 
                 self.updates.append((num_samples, update))
                 num_k += 1
@@ -246,7 +249,7 @@ class Server:
             client.test(set_to_use, num_round)
             # c_metrics = client.test(set_to_use)
             # metrics[client.id] = c_metrics
-        
+
         metrics = self.collect_updates(num_round, "test", len(clients_to_test), sys_metrics=metrics)
         for k,v in metrics.items():
             self.write_log("%d round@ %s for %s data: accuracy = %f, loss = %f\n" %(num_round, k, set_to_use, v['accuracy'], v['loss']))
