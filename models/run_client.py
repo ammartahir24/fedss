@@ -19,7 +19,7 @@ Runs Client instance and manages all its communication with the server (managed 
 bandwidth(MBps): average network bandwidth
 train_timeratio(ms/sample): training time per sample
 '''
-ip, port, bandwidth, train_timeratio = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), float(sys.argv[4])
+ip, port, bandwidth, flops = sys.argv[1], int(sys.argv[2]), float(sys.argv[3]), float(sys.argv[4])
 server_ip, server_port = "127.0.0.1", 9999 # replace 127.0.0.1 with mahimahi assigned IP?
 data = {}
 with open("temp/"+ip+str(port)+".json", 'r') as json_file:
@@ -87,15 +87,18 @@ def handleConn(conn, addr, action):
         round_num = data['round_num']
         #print("%s: model received, starting training" %(user))
         client.model.set_params(model)
+        ts_start_trn = time.time()
         comp, num_samples, update = client.train(num_epochs, batch_size, minibatch)
-        #ts_end = time.time()
-        network_delay = int(msg_len / bandwidth / 1000)
-        compute_time = client.num_train_samples * train_timeratio
-        simulated_time = network_delay + compute_time
-        #simulated_time = int(msg_len / bandwidth / 1000 + client.num_train_samples * train_timeratio)
-        #time_to_sleep = simulated_time / 1000 - (ts_end - ts_start)
-        #if time_to_sleep > 0:
-        #    time.sleep(time_to_sleep)
+        ts_end = time.time()
+        download_time = msg_len / (1000000*bandwidth/8)
+        upload_time = msg_len / (1000000*(bandwidth/2)/8)
+        compute_time = (client.model.flops*num_samples)/(flops*1000000)
+        simulated_time = download_time + compute_time + upload_time
+        simulated_time = simulated_time * random.gauss(1.0, 0.1)
+        # simulated_time = int(msg_len / bandwidth / 1000 + client.num_train_samples * train_timeratio)
+        # time_to_sleep = simulated_time / 1000 - (ts_end - ts_start)
+        # if time_to_sleep > 0:
+        #     time.sleep(time_to_sleep)
         # send updates to server
         svr_soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         svr_soc.connect((server_ip, server_port))
@@ -112,8 +115,8 @@ def handleConn(conn, addr, action):
         svr_soc.send(str(len(data_to_send)).encode('utf-8'))
         svr_soc.recv(2)
         svr_soc.send(data_to_send)
-        print("training user: %s total_time: %d train_time: %d network_delay: %d ms" \
-                %(user, simulated_time, compute_time, network_delay))
+        print("training user: %s total_time: %f train_time: %f network_time: %f ms" \
+                %(user, simulated_time, compute_time, download_time+upload_time))
     elif action == "tst":
         # receive model and param
         msg_len = int(conn.recv(1024).decode('utf-8'))
@@ -150,7 +153,7 @@ def handleConn(conn, addr, action):
         conn.send(str(client.num_train_samples).encode('utf-8'))
     elif action == "env":
         data = {}
-        data["train_timeratio"] = train_timeratio
+        data["flops"] = flops
         data["bandwidth"] = bandwidth
         data_to_send = jsonpickle.encode(data).encode("utf-8")
         conn.send(data_to_send)
@@ -160,6 +163,7 @@ soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 soc.bind((ip, port))
 soc.listen()
 print('--- Client running at (%s, %d) ---' % (ip, port))
+print('bandwidth: %f, numFlops: %f' %(bandwidth, flops))
 while True:
     conn, addr = soc.accept()
     action = conn.recv(3).decode('utf-8')

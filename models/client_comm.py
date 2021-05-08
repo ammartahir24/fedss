@@ -20,8 +20,18 @@ class ClientComm:
         self.model = model
         self.model_params = []
         self.model_size_bytes = 0
-        self.bandwidth = random.randint(3, 12)
-        self.train_timeratio = round( 2.898 * random.randint(3, 12), 3)
+        self.roundtime = 0.0
+        networks_file = open('network.json', 'r')
+        networks_data = json.load(networks_file)
+        try:
+            self.bandwidth = float(networks_data[random.randint(0, len(networks_data)-1)]['broadband'])
+        except:
+            self.bandwidth = float(networks_data[random.randint(0, len(networks_data)-1)]['mobile'])
+        phones_file = open('phones.txt', 'r')
+        phones_data = phones_file.read().split('\n')
+        self.flops = int(phones_data[random.randint(0, 17)].split(', ')[1])
+        networks_file.close()
+        phones_file.close()
         # write all data
         if not os.path.exists("temp"):
             os.mkdir("temp")
@@ -37,7 +47,7 @@ class ClientComm:
         # data["model"] = model
         # self.model.save("temp/"+ip+str(port)+"model")
         fname_data = "temp/" + ip + str(port) + ".json"
-        cmd_client = "python3 run_client.py " + ip + " " + str(port) + " " + str(self.bandwidth) + " " + str(self.train_timeratio)
+        cmd_client = "python3 run_client.py " + ip + " " + str(port) + " " + str(self.bandwidth) + " " + str(self.flops)
         with open(fname_data, 'w') as outfile:
             json.dump(data, outfile)
         # To Do: spawn process in mahimahi shell
@@ -121,7 +131,7 @@ class ClientComm:
     def client_env(self):
         # The time(in ms) it takes to train one batch in one epoch
         data = {}
-        data["train_timeratio"] = self.train_timeratio
+        data["flops"] = self.flops
         data["bandwidth"] = self.bandwidth
         # soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # soc.connect((self.ip, self.port))
