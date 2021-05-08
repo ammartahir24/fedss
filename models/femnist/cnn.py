@@ -44,8 +44,9 @@ class ClientModel(Model):
         train_op = self.optimizer.minimize(
             loss=loss,
             global_step=tf.train.get_global_step())
+    
         eval_metric_ops = tf.count_nonzero(tf.equal(labels, predictions["classes"]))
-        return features, labels, train_op, eval_metric_ops, loss
+        return features, labels, train_op, eval_metric_ops, loss, predictions["classes"]
 
     def process_x(self, raw_x_batch):
         return np.array(raw_x_batch)

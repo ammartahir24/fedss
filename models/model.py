@@ -10,6 +10,7 @@ from baseline_constants import ACCURACY_KEY
 
 from utils.model_utils import batch_data
 from utils.tf_utils import graph_size
+from sklearn.metrics import f1_score
 
 
 class Model(ABC):
@@ -22,7 +23,7 @@ class Model(ABC):
         self.graph = tf.Graph()
         with self.graph.as_default():
             tf.set_random_seed(123 + self.seed)
-            self.features, self.labels, self.train_op, self.eval_metric_ops, self.loss = self.create_model()
+            self.features, self.labels, self.train_op, self.eval_metric_ops, self.loss, self.pred = self.create_model()
             self.saver = tf.train.Saver()
         self.sess = tf.Session(graph=self.graph)
 
@@ -69,7 +70,7 @@ class Model(ABC):
                 eval_metric_ops: A Tensorflow operation that, when run with features and labels,
                     returns the accuracy of the model.
         """
-        return None, None, None, None, None
+        return None, None, None, None, None, None
 
     def train(self, data, num_epochs=1, batch_size=10):
         """
@@ -117,12 +118,14 @@ class Model(ABC):
         x_vecs = self.process_x(data['x'])
         labels = self.process_y(data['y'])
         with self.graph.as_default():
-            tot_acc, loss = self.sess.run(
-                [self.eval_metric_ops, self.loss],
+            tot_acc, loss, y_pred = self.sess.run(
+                [self.eval_metric_ops, self.loss, self.pred],
                 feed_dict={self.features: x_vecs, self.labels: labels}
             )
         acc = float(tot_acc) / x_vecs.shape[0]
-        return {ACCURACY_KEY: acc, 'loss': loss}
+        #f1_score = float(tot_f1_score) / x_vecs.shape[0]
+        f1 = f1_score(labels, y_pred, average = "weighted")
+        return {ACCURACY_KEY: acc, 'loss': loss, 'f1_score': f1}
 
     def close(self):
         self.sess.close()
