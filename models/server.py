@@ -348,7 +348,7 @@ class Server:
 
         metrics = self.collect_updates(num_round, "test", len(clients_to_test), len(clients_to_test), sys_metrics=metrics)
         for k,v in metrics.items():
-            self.write_log("%d round@ %s for %s data: accuracy = %f, loss = %f\n" %(num_round, k, set_to_use, v['accuracy'], v['loss']))
+            self.write_log("%d round@ %s for %s data: accuracy = %f, loss = %f, f1 = %f\n" %(num_round, k, set_to_use, v['accuracy'], v['loss'], v['f1']))
         return metrics
 
     def get_clients_info(self, clients):
